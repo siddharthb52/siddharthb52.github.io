@@ -67,6 +67,39 @@ function addNavButtons() {
   }
 }
 
+// A wrap for annotations used in scene 3: splits a <text> into tspans at a max px width
+function wrap(textSel, width) {
+    textSel.each(function() {
+      const text = d3.select(this);
+      const words = text.text().split(/\s+/).reverse();
+      let word,
+          line = [],
+          lineNumber = 0,
+          lineHeight = 1.1,
+          y = text.attr("y") || 0,
+          dy = parseFloat(text.attr("dy")) || 0,
+          tspan = text.text(null)
+                      .append("tspan")
+                      .attr("x", 0)
+                      .attr("y", y)
+                      .attr("dy", dy + "em");
+      while (word = words.pop()) {
+        line.push(word);
+        tspan.text(line.join(" "));
+        if (tspan.node().getComputedTextLength() > width) {
+          line.pop();
+          tspan.text(line.join(" "));
+          line = [word];
+          tspan = text.append("tspan")
+                      .attr("x", 0)
+                      .attr("y", y)
+                      .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                      .text(word);
+        }
+      }
+    });
+  }
+
 // ----- 3) SCENE 1 -----
 function renderScene1() {
   // common layout setup (once per scene1 init)
@@ -416,25 +449,95 @@ g3.append("text")
   legend.append("text").attr("x",150).attr("y",4).text("Life Expectancy").style("font-size","12px");
 
 
-  // Annotations -- Need fixing
-  // const annotations = [
-  //   {
-  //     note: { title: "Post-2010 GDP Surge", label: "GDP per capita jumped after 2010." },
-  //     x: x(2012), y: yGDP(usaData.find(d=>d.year===2012).gdpPercap),
-  //     dx: -50, dy: -40, color: "steelblue"
-  //   },
-  //   {
-  //     note: { title: "Life-Exp Plateau", label: "Life expectancy growth slowed by 2014." },
-  //     x: x(2014), y: yLife(usaData.find(d=>d.year===2014).lifeExp),
-  //     dx: 50, dy: -40, color: "crimson"
-  //   }
-  // ];
-  // const makeAnn = d3.annotation()
-  //   .type(d3.annotationLabel)
-  //   .annotations(annotations);
-  // g3.append("g")
-  //   .attr("class","annotation-group")
-  //   .call(makeAnn);
+  // Defining an arrowhead marker
+  g3.append("defs").append("marker")
+    .attr("id", "arrow")
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", 10)
+    .attr("refY", 0)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", "#555");
+
+  // Helper to draw annotation
+  function drawAnnotation(xPos, yPos, dx, dy, title, label, color) {
+    const lineHeight = 1.1; // must match your wrap() helper’s lineHeight
+
+    // Connector line + arrow
+    g3.append("line")
+      .attr("x1", xPos).attr("y1", yPos)
+      .attr("x2", xPos + dx).attr("y2", yPos + dy)
+      .attr("stroke", color)
+      .attr("stroke-width", 1.5)
+      .attr("marker-end", "url(#arrow)");
+
+    // Text group positioned at the arrow tip
+    const tg = g3.append("g")
+      .attr("transform", `translate(${xPos + dx},${yPos + dy})`);
+
+    // Choose text‐anchor based on direction
+    const anchor = dx < 0 ? "end" : "start";
+
+    // Title block (wrapped)
+    const titleText = tg.append("text")
+      .attr("dy", "-0.3em")
+      .attr("text-anchor", anchor)
+      .style("font-size", "12px")
+      .style("font-weight", "bold")
+      .style("fill", color)
+      .text(title)
+      .call(wrap, 100);      // wrap at 100px
+
+    // how many lines the title took?
+    const titleLines = titleText.selectAll("tspan").size() || 1;
+
+    // Label block, pushed down below the title
+    tg.append("text")
+      .attr("dy", `${titleLines * lineHeight + 0.5}em`)
+      .attr("text-anchor", anchor)
+      .style("font-size", "10px")
+      .style("fill", color)
+      .text(label)
+      .call(wrap, 120);      // wrap at 120px
+  }
+
+  // Specific data points
+  const pt1861 = usaData.find(d => d.year === 1861);
+  const pt1916 = usaData.find(d => d.year === 1916);
+  const pt2008 = usaData.find(d => d.year === 2008);
+
+  // Draw the two annotations
+  drawAnnotation(
+    x(pt1861.year),      // x(1861)
+    yLife(pt1861.lifeExp),// lifeExp drop
+    -60, -50,             // dx, dy (tweak if needed)
+    "Civil War (1861)",
+    "Life expectancy plunged during the Civil War.",
+    "black"
+  );
+
+  drawAnnotation(
+    x(pt1916.year),        // x(1916)
+    yLife(pt1916.lifeExp),  // lifeExp dip
+    +20, -150,               // dx, dy
+    "World War I (1916)\n",
+    "A noticeable dip in life expectancy during WWI.",
+    "black"
+  );
+
+  drawAnnotation(
+    x(pt2008.year),
+    yGDP(pt2008.gdpPercap),
+    -20, 170,
+    "Financial Crisis (2008)",
+    "Noticeable economic harm during the 2008 crisis.",
+    "black"
+  );
+
+  
 
   
   
