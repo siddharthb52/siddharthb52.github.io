@@ -2,7 +2,7 @@
 let allData, years;
 let currentScene = 0;
 const sceneTitles = [
-  "Scene 1 - GDP vs. Life Expectancy",
+  "Scene 1 - GDP vs. Life Expectancy Throughout History",
   "Scene 2 - Top 10 Increases in GDP to Life Expectancy Ratio (21st Century)",
   "Scene 3 - Country Spotlight: U.S. GDP and Life Expectancy Over Time"
 ];
